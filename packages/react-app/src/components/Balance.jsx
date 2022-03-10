@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { formatEther } from "@ethersproject/units";
-import { usePoller } from "eth-hooks";
-import { useBalance } from "../hooks"
+import { useBalance } from "eth-hooks";
+
+const { utils } = require("ethers");
 
 /*
   ~ What it does? ~
@@ -21,11 +21,6 @@ import { useBalance } from "../hooks"
     balance={balance}
     price={price}
   />
-  
-  <Balance
-    balance={hardCodedBalance}
-    dollarMultiplier={props.price}
-  />
 
   ~ Features ~
 
@@ -34,13 +29,12 @@ import { useBalance } from "../hooks"
   - Provide price={price} of ether and get your balance converted to dollars
 */
 
-
 export default function Balance(props) {
   const [dollarMode, setDollarMode] = useState(true);
 
-  const [listening, setListening] = useState(false);
+  // const [listening, setListening] = useState(false);
 
-  const balance = useBalance(props.provider, props.address)
+  const balance = useBalance(props.provider, props.address);
 
   let floatBalance = parseFloat("0.00");
 
@@ -54,14 +48,14 @@ export default function Balance(props) {
   }
 
   if (usingBalance) {
-    const etherBalance = formatEther(usingBalance);
+    const etherBalance = utils.formatEther(usingBalance);
     parseFloat(etherBalance).toFixed(2);
     floatBalance = parseFloat(etherBalance);
   }
 
   let displayBalance = floatBalance.toFixed(4);
 
-  const price = props.price || props.dollarMultiplier
+  const price = props.price || props.dollarMultiplier;
 
   if (price && dollarMode) {
     displayBalance = "$" + (floatBalance * price).toFixed(2);
@@ -71,7 +65,7 @@ export default function Balance(props) {
     <span
       style={{
         verticalAlign: "middle",
-        fontSize: props.fontSize ? props.fontSize : 24,
+        fontSize: props.size ? props.size : 24,
         padding: 8,
         cursor: "pointer",
       }}

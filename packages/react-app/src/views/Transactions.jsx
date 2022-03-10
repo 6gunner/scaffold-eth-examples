@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Button, List, Divider, Input, Card, DatePicker, Slider, Switch, Progress, Spin } from "antd";
+import { useContractReader, useEventListener, usePoller } from "eth-hooks";
 import { SyncOutlined } from "@ant-design/icons";
 import { parseEther, formatEther } from "@ethersproject/units";
 import { ethers } from "ethers";
 import { Address, AddressInput, Balance, Blockie, TransactionListItem } from "../components";
-import { useContractReader, useEventListener, usePoller } from "../hooks";
 
 const axios = require("axios");
 
@@ -53,7 +53,7 @@ export default function Transactions({
         }
       }
       setTransactions(newTransactions);
-      console.log("Loaded",newTransactions.length)
+      console.log("Loaded", newTransactions.length)
     };
     if (readContracts) getTransactions();
   }, 3777);
@@ -93,7 +93,7 @@ export default function Transactions({
     return <Spin />;
   }
 
-  console.log("transactions",transactions)
+  console.log("transactions", transactions)
 
   return (
     <div style={{ maxWidth: 750, margin: "auto", marginTop: 32, marginBottom: 32 }}>
@@ -146,8 +146,9 @@ export default function Transactions({
                       signatures: finalSigList,
                       signers: finalSigners,
                     });
+                  } else {
+                    alert("You are not owner!")
                   }
-
                   // tx( writeContracts[contractName].executeTransaction(item.to,parseEther(""+parseFloat(item.amount).toFixed(12)), item.data, item.signatures))
                 }}
                 type="secondary"
@@ -157,7 +158,7 @@ export default function Transactions({
               <Button
 
                 key={item.hash}
-                
+
                 onClick={async () => {
                   const newHash = await readContracts[contractName].getTransactionHash(
                     item.nonce,
@@ -184,7 +185,7 @@ export default function Transactions({
               >
                 Exec
               </Button>
-          </TransactionListItem>
+            </TransactionListItem>
           );
         }}
       />
