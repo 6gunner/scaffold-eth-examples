@@ -7,7 +7,7 @@ import { BrowserRouter, Link, Route, Switch } from "react-router-dom";
 import Web3Modal from "web3modal";
 import "./App.css";
 import { Account, Address, AddressInput, Contract, Faucet, GasGauge, Header, Ramp, ThemeSwitch } from "./components";
-import {INFURA_ID, NETWORK, NETWORKS } from "./constants";
+import { INFURA_ID, NETWORK, NETWORKS } from "./constants";
 import { Transactor } from "./helpers";
 import {
   useBalance,
@@ -47,7 +47,7 @@ const { ethers } = require("ethers");
 */
 
 /// 📡 What chain are your contracts deployed to?
-const targetNetwork = NETWORKS.localhost; // <------- select your target frontend network (localhost, rinkeby, xdai, mainnet)
+const targetNetwork = NETWORKS.rinkeby; // <------- select your target frontend network (localhost, rinkeby, xdai, mainnet)
 
 // 😬 Sorry for all the console logging
 const DEBUG = true;
@@ -203,7 +203,7 @@ function App(props) {
   useEffect(() => {
     const updateCollectibles = async () => {
       const collectiblesUpdate = [];
-    
+
       for (let collectibleIndex = 0; collectibleIndex < numberCollectiblesCount; collectibleIndex++) {
         try {
           let tokenSupply = await readContracts.YourCollectible.tokenSupply(collectibleIndex);
@@ -215,8 +215,8 @@ function App(props) {
           const jsonManifestBuffer = await getFromIPFS(ipfsHash);
 
           try {
-            const jsonManifest =JSON.parse(jsonManifestBuffer.toString());
-            collectiblesUpdate.push({ id: collectibleIndex, supply:tokenSupply, owned:owned, name: jsonManifest.name, description: jsonManifest.description, image:jsonManifest.image });
+            const jsonManifest = JSON.parse(jsonManifestBuffer.toString());
+            collectiblesUpdate.push({ id: collectibleIndex, supply: tokenSupply, owned: owned, name: jsonManifest.name, description: jsonManifest.description, image: jsonManifest.image });
           } catch (e) {
             console.log(e);
           }

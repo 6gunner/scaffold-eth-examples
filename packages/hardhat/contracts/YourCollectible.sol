@@ -13,9 +13,14 @@ contract YourCollectible is ERC1155, Ownable {
   uint256 private _currentTokenID = 0;
 	mapping(uint256 => uint256) public tokenSupply;
 
-  constructor(string memory _uri) ERC1155(_uri) 
-  {}
+  constructor(string memory _uri) ERC1155(_uri) {
+    // _mint(msg.sender, 0, 4, []);
+    // _mint(msg.sender, 1, 10, []);
+    // _mint(msg.sender, 2, 2, []);
+    // _currentTokenID = 3;
+  }
 
+  // 只有合约的owner才能铸币
   function mint(
       address _to,
 		  uint256 _id,
@@ -25,8 +30,10 @@ contract YourCollectible is ERC1155, Ownable {
       public
       onlyOwner
   {
-      if(tokenSupply[_id] == 0)
+      // 新的币需要按id顺序来
+      if(tokenSupply[_id] == 0) {
         require(_id == _currentTokenID, "Wrong id provided");
+      }
 
 		  _mint(_to, _id, _quantity, _data);
 		  tokenSupply[_id] = tokenSupply[_id] + _quantity;
