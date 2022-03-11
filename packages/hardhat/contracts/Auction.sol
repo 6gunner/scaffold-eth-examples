@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
@@ -5,23 +6,27 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 
 contract Auction is IERC721Receiver {
+    // 定义一个nft的拍卖详情的数据结构
     struct tokenDetails {
         address seller;
         uint128 price;
         uint256 duration;
-        uint256 maxBid;
-        address maxBidUser;
+        uint256 maxBid; // 最高的竞拍价
+        address maxBidUser; // 最高的竞拍者
         bool isActive;
         uint256[] bidAmounts;
         address[] users;
     }
 
+    // nft合约地址 => tokenId => tokenDetails
     mapping(address => mapping(uint256 => tokenDetails)) public tokenToAuction;
 
+    // nft合约地址 => tokenId => 用户 => 出价
     mapping(address => mapping(uint256 => mapping(address => uint256))) public bids;
     
     /**
        Seller puts the item on auction
+       创建拍卖
     */
     function createTokenAuction(
         address _nft,
@@ -44,6 +49,7 @@ contract Auction is IERC721Receiver {
             users: new address[](0)
         });
         address owner = msg.sender;
+        // 每次创建拍卖时，需要将nft的转给Auction合约，所以Auction合约是一个IERC721Receiver
         ERC721(_nft).safeTransferFrom(owner, address(this), _tokenId);
         tokenToAuction[_nft][_tokenId] = _auction;
     }
@@ -56,6 +62,7 @@ contract Auction is IERC721Receiver {
         require(auction.isActive, "auction not active");
         require(auction.duration > block.timestamp, "Deadline already passed");
         if (bids[_nft][_tokenId][msg.sender] > 0) {
+            // 先将用户之前拍卖的钱退还回去
             (bool success, ) = msg.sender.call{value: bids[_nft][_tokenId][msg.sender]}("");
             require(success);
         }
@@ -65,6 +72,7 @@ contract Auction is IERC721Receiver {
             auction.maxBidUser = msg.sender;
         } else {
             uint256 lastIndex = auction.bidAmounts.length - 1;
+            // 为什么不拿maxBid比较？;
             require(auction.bidAmounts[lastIndex] < msg.value, "Current max bid is higher than your bid");
             auction.maxBid = msg.value;
             auction.maxBidUser = msg.sender;
@@ -74,6 +82,7 @@ contract Auction is IERC721Receiver {
     }
     /**
        Called by the seller when the auction duration is over the hightest bid user get's the nft and other bidders get eth back
+       竞拍结束，转移nft的所有权
     */
     function executeSale(address _nft, uint256 _tokenId) external {
         tokenDetails storage auction = tokenToAuction[_nft][_tokenId];
@@ -92,6 +101,7 @@ contract Auction is IERC721Receiver {
             require(success);
             for (uint256 i = 0; i < auction.users.length; i++) {
                 if (auction.users[i] != auction.maxBidUser) {
+                    // 将所有参与拍卖的用户的钱退还回去
                     (success, ) = auction.users[i].call{
                         value: bids[_nft][_tokenId][auction.users[i]]
                     }("");
@@ -107,7 +117,7 @@ contract Auction is IERC721Receiver {
     }
 
     /**
-       Called by the seller if they want to cancel the auction for their nft so the bidders get back the locked eeth and the seller get's back the nft
+       Called by the seller if they want to cancel the auction for their nft so the bidders get back the locked eth and the seller get's back the nft
     */
     function cancelAuction(address _nft, uint256 _tokenId) external {
         tokenDetails storage auction = tokenToAuction[_nft][_tokenId];
@@ -127,12 +137,13 @@ contract Auction is IERC721Receiver {
         return auction;
     }
 
+    // 这是ERC-721的规定
     function onERC721Received(
         address,
         address,
         uint256,
         bytes calldata
-    )external override returns(bytes4) {
+    ) public virtual override returns(bytes4) {
         return bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"));
     }
 
