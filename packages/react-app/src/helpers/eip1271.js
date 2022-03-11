@@ -1,4 +1,4 @@
-import { Contract, providers, utils } from "ethers";
+import { Contract, utils } from "ethers";
 
 const spec = {
   magicValue: "0x1626ba7e",
@@ -29,17 +29,10 @@ const spec = {
   ],
 };
 
-export async function isValidSignature(
-  address: string,
-  sig: string,
-  data: string,
-  provider: providers.Provider,
-  abi = spec.abi,
-  magicValue = spec.magicValue
-) {
+export async function isValidSignature(address, sig, data, provider, abi = spec.abi, magicValue = spec.magicValue) {
   let returnValue;
   try {
-    let contract = new Contract(address, abi, provider);
+    const contract = new Contract(address, abi, provider);
     console.log(contract);
     returnValue = await contract.isValidSignature(utils.arrayify(data), sig);
     console.log("returnValue", returnValue);

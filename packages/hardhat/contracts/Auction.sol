@@ -1,3 +1,5 @@
+//SPDX-License-Identifier: MIT
+
 pragma solidity 0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
@@ -13,21 +15,29 @@ contract Auction is IERC721Receiver, SignatureChecker {
         uint256 duration;
         bool isActive;
     }
-
+    // nftAddress => tokenId => tokenDetails
     mapping(address => mapping(uint256 => tokenDetails)) public tokenToAuction;
 
-    mapping(address => mapping(uint256 => mapping(address => uint256))) public stakes;
+    // nftAddress => tokenId => userAddress => price
+    mapping(address => mapping(uint256 => mapping(address => uint256)))
+        public stakes;
 
-    mapping(address => uint) public totalStake;
+    // userAddress => price
+    mapping(address => uint256) public totalStake;
 
     constructor() {
-      setCheckSignatureFlag(true);
+        setCheckSignatureFlag(true);
     }
 
-    function getStakeInfo(address _nft, uint256 _tokenId, address addr) public view returns (uint256) {
+    // 返回
+    function getStakeInfo(
+        address _nft,
+        uint256 _tokenId,
+        address addr
+    ) public view returns (uint256) {
         return stakes[_nft][_tokenId][addr];
     }
-    
+
     /**
        Seller puts the item on auction
     */
@@ -46,48 +56,61 @@ contract Auction is IERC721Receiver, SignatureChecker {
             price: uint128(_price),
             duration: _duration,
             isActive: true
-            });
+        });
         address owner = msg.sender;
         ERC721(_nft).safeTransferFrom(owner, address(this), _tokenId);
         tokenToAuction[_nft][_tokenId] = _auction;
     }
 
     /**
-      Before making off-chain stakes potential bidders need to stake eth and either they will get it back when the auction ends or they can withdraw it any anytime.
+      Before making off-chain stakes potential 
+      bidders need to stake eth and either they will get it back when the auction ends or they can withdraw it any anytime.
     */
-    function stake(address _nft, uint256 _tokenId) payable external {
+    function stake(address _nft, uint256 _tokenId) external payable {
         require(msg.sender != address(0));
         tokenDetails storage auction = tokenToAuction[_nft][_tokenId];
         require(msg.value >= auction.price);
-        require(auction.duration > block.timestamp, "Auction for this nft has ended");
+        require(
+            auction.duration > block.timestamp,
+            "Auction for this nft has ended"
+        );
         stakes[_nft][_tokenId][msg.sender] += msg.value;
         totalStake[msg.sender] += msg.value;
     }
 
     /**
-       Called by the seller when the auction duration, since all stakes are made offchain so the seller needs to pick the highest bid infoirmation and pass it on-chain ito this function
+       Called by the seller when the auction duration, 
+       since all stakes are made offchain so the seller needs to pick the highest bid information 
+       and pass it on-chain ito this function
     */
-    function executeSale(address _nft, uint256 _tokenId, address bidder, uint256 amount, bytes memory sig) external {
+    function executeSale(
+        address _nft,
+        uint256 _tokenId,
+        address bidder,
+        uint256 amount,
+        bytes memory sig
+    ) external {
         require(bidder != address(0));
         tokenDetails storage auction = tokenToAuction[_nft][_tokenId];
         require(bidder != auction.seller);
-        require(amount <=  stakes[_nft][_tokenId][bidder]);
+        require(amount <= stakes[_nft][_tokenId][bidder]);
         require(amount >= auction.price);
-        require(auction.duration <= block.timestamp, "Auction hasn't ended yet");
+        require(
+            auction.duration <= block.timestamp,
+            "Auction hasn't ended yet"
+        );
         require(auction.seller == msg.sender);
         require(auction.isActive);
         auction.isActive = false;
-        bytes32 messageHash = keccak256(abi.encodePacked(_tokenId, _nft, bidder, amount));
+        bytes32 messageHash = keccak256(
+            abi.encodePacked(_tokenId, _nft, bidder, amount)
+        );
         bool isBidder = checkSignature(messageHash, sig, bidder);
-        require(isBidder, "Invalid Bidder"); 
+        require(isBidder, "Invalid Bidder");
         // since this is individualized hence okay to delete
         delete stakes[_nft][_tokenId][bidder];
         totalStake[bidder] -= amount;
-        ERC721(_nft).safeTransferFrom(
-                address(this),
-                bidder,
-                _tokenId
-            );
+        ERC721(_nft).safeTransferFrom(address(this), bidder, _tokenId);
         (bool success, ) = auction.seller.call{value: amount}("");
         require(success);
     }
@@ -95,9 +118,12 @@ contract Auction is IERC721Receiver, SignatureChecker {
     function withdrawStake(address _nft, uint256 _tokenId) external {
         require(msg.sender != address(0));
         tokenDetails storage auction = tokenToAuction[_nft][_tokenId];
-        require(stakes[_nft][_tokenId][msg.sender] > 0); 
-        require(auction.duration <= block.timestamp, "Auction hasn't ended yet");
-        uint amount = stakes[_nft][_tokenId][msg.sender];
+        require(stakes[_nft][_tokenId][msg.sender] > 0);
+        require(
+            auction.duration <= block.timestamp,
+            "Auction hasn't ended yet"
+        );
+        uint256 amount = stakes[_nft][_tokenId][msg.sender];
         delete stakes[_nft][_tokenId][msg.sender];
         totalStake[msg.sender] -= amount;
         (bool success, ) = msg.sender.call{value: amount}("");
@@ -107,29 +133,41 @@ contract Auction is IERC721Receiver, SignatureChecker {
     // /**
     //    Called by the seller if they want to cancel the auction for their nft so the bidders get back the locked eeth and the seller get's back the nft and the seller needs to do this tx by passing all bid info received off-chain
     // */
-    function cancelAuction(address _nft, uint256 _tokenId, address[] memory _bidders) external {
+    function cancelAuction(
+        address _nft,
+        uint256 _tokenId,
+        address[] memory _bidders
+    ) external {
         tokenDetails storage auction = tokenToAuction[_nft][_tokenId];
         require(auction.seller == msg.sender);
         require(auction.isActive);
         auction.isActive = false;
         bool success;
         for (uint256 i = 0; i < _bidders.length; i++) {
-        require(stakes[_nft][_tokenId][_bidders[i]] > 0);
-        uint amount = stakes[_nft][_tokenId][_bidders[i]];
-        delete stakes[_nft][_tokenId][_bidders[i]];
-        totalStake[_bidders[i]] -= amount;
-        (success, ) = _bidders[i].call{value: amount}("");        
-        require(success);
+            require(stakes[_nft][_tokenId][_bidders[i]] > 0);
+            uint256 amount = stakes[_nft][_tokenId][_bidders[i]];
+            delete stakes[_nft][_tokenId][_bidders[i]];
+            totalStake[_bidders[i]] -= amount;
+            (success, ) = _bidders[i].call{value: amount}("");
+            require(success);
         }
         ERC721(_nft).safeTransferFrom(address(this), auction.seller, _tokenId);
     }
 
-    function getTokenAuctionDetails(address _nft, uint256 _tokenId) public view returns (tokenDetails memory) {
+    function getTokenAuctionDetails(address _nft, uint256 _tokenId)
+        public
+        view
+        returns (tokenDetails memory)
+    {
         tokenDetails memory auction = tokenToAuction[_nft][_tokenId];
         return auction;
     }
 
-    function getTotalBidderStake(address _bidder) external view returns (uint) {
+    function getTotalBidderStake(address _bidder)
+        external
+        view
+        returns (uint256)
+    {
         return totalStake[_bidder];
     }
 
@@ -138,8 +176,11 @@ contract Auction is IERC721Receiver, SignatureChecker {
         address,
         uint256,
         bytes calldata
-    ) external pure override returns(bytes4) {
-        return bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"));
+    ) external pure override returns (bytes4) {
+        return
+            bytes4(
+                keccak256("onERC721Received(address,address,uint256,bytes)")
+            );
     }
 
     receive() external payable {}

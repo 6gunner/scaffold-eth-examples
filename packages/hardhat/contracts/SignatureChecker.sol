@@ -1,3 +1,5 @@
+//SPDX-License-Identifier: MIT
+
 pragma solidity 0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -14,20 +16,30 @@ contract SignatureChecker is Ownable {
     bytes4 internal constant _ERC1271FAILVALUE = 0xffffffff;
 
     function setCheckSignatureFlag(bool newFlag) public onlyOwner {
-      checkSignatureFlag = newFlag;
+        checkSignatureFlag = newFlag;
     }
 
-    function getSigner(bytes32 signedHash, bytes memory signature) public pure returns (address)
+    function getSigner(bytes32 signedHash, bytes memory signature)
+        public
+        pure
+        returns (address)
     {
         return signedHash.toEthSignedMessageHash().recover(signature);
     }
 
-    function checkSignature(bytes32 signedHash, bytes memory signature, address checkAddress) public view returns (bool) {
-      if(checkAddress.isContract()) {
-        return IERC1271(checkAddress).isValidSignature(signedHash, signature) == _INTERFACE_ID_ERC1271;
-      } else {
-        return getSigner(signedHash, signature) == checkAddress;
-      }
+    function checkSignature(
+        bytes32 signedHash,
+        bytes memory signature,
+        address checkAddress
+    ) public view returns (bool) {
+        if (checkAddress.isContract()) {
+            return
+                IERC1271(checkAddress).isValidSignature(
+                    signedHash,
+                    signature
+                ) == _INTERFACE_ID_ERC1271;
+        } else {
+            return getSigner(signedHash, signature) == checkAddress;
+        }
     }
-
 }
